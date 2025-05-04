@@ -3,7 +3,7 @@ title: "Report on Motorcycle Accident Deaths in Colombia"
 author: "Olugbenga Asaolu" # Remember to add your name!
 output:
   prettydoc::html_pretty:
-    theme: architect
+    theme: cosmo
 date: "`r Sys.Date()`"
 ---
 
