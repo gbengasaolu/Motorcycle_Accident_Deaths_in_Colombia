@@ -1,0 +1,179 @@
+---
+title: "Report on Motorcycle Accident Deaths in Colombia"
+author: "Olugbenga Asaolu" # Remember to add your name!
+output:
+  prettydoc::html_pretty:
+    theme: architect
+date: "`r Sys.Date()`"
+---
+
+::: {.hidden}
+
+```{r include = FALSE}
+# Set chunk options
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE)
+```
+
+```{r}
+# TASK 1: LOAD THE REQUIRED PACKAGES
+if(!require(pacman)) install.packages("pacman")
+pacman::p_load(tidyverse, here, janitor, reactable)
+```
+
+```{r}
+# TASK 2: IMPORT THE DATA
+col_accidents <- read_csv(here("data", "motorcycle_accidents_colombia.csv"))
+```
+
+```{r}
+# TASK 3: CLEAN THE COLUMN NAMES 
+col_accidents_clean <- col_accidents %>% 
+  clean_names()
+```
+
+```{r}
+# TASK 4: RENAME AND TRANSFORM VARIABLES
+col_accidents_clean2 <- col_accidents_clean %>%
+  rename(position = condition) %>%
+  mutate(gender = str_to_title(gender))
+```
+
+```{r}
+# TASK 5: CREATE A SUBSET
+col_accidents_subset <- col_accidents_clean2 %>%
+  select(id, gender, age, age_group, position) %>%
+  filter(position != "unknown")
+```
+
+```{r}
+# TASK 6: SUMMARIZE DATA
+age_sex_count <- col_accidents_subset %>%
+  count(age_group, gender)
+```
+
+```{r}
+# TASK 7: VISUALIZE SUMMARY DATA
+death_plot2 <- ggplot(age_sex_count, aes(x = age_group, y = n, fill = gender)) +
+  geom_col(position = "stack") +
+  geom_text(aes(label = n), 
+            position = position_stack(vjust = 0.5), 
+            color = "white", size = 3) +
+  labs(
+    title = "Number of Motorcycle Accident Deaths by Age Group and Gender",
+    subtitle = "Stacked bar chart showing the distribution of fatalities by demographic group",
+    caption = "Data source: Motorcycle accident fatalities dataset, Colombia",
+    x = "Age Group",
+    y = "Number of Deaths",
+    fill = "Gender"
+  ) +
+  theme_minimal()
+
+death_plot2
+```
+
+```{r}
+# TASK 8: EXPORT YOUR OUTPUTS
+write_csv(age_sex_count, here("outputs", "age_sex_count.csv"))
+
+ggsave(
+  filename = here("outputs", "death_plot.png"),
+  plot = death_plot2,
+  width = 8,
+  height = 6,
+  dpi = 300
+)
+```
+
+
+:::
+
+# Introduction
+
+The dataset analysed in this report provides information about **`r nrow(col_accidents_subset)`** deaths caused by motorcycle accidents in Medellín, a Colombian city, from 2012 to 2015. The data is sourced from medical and police certificates and can be accessed [here](https://zenodo.org/record/4836304).
+
+# Age-sex distribution of motorcyle deaths
+
+In this analysis, we looked at the number of deaths per age and sex group.
+
+```{r}
+# Print your graph here.
+death_plot2
+```
+
+The age group with the highest number of motorcycle accident deaths among males is `r age_sex_count %>% filter(gender == "Male") %>% arrange(desc(n)) %>% slice(1) %>% pull(age_group)` with `r age_sex_count %>% filter(gender == "Male") %>% arrange(desc(n)) %>% slice(1) %>% pull(n)` deaths.
+
+
+```{r}
+# TASK 9: ADD INLINE CODE AND COMMENTARY 
+
+## Each of the 3 statistics in this code chunk will be quoted in the text below.
+
+max_sex_group <- age_sex_count %>% 
+  filter(n == max(n)) %>% 
+  pull(gender)
+
+max_age_group <- age_sex_count %>% 
+ filter(n == max(n)) %>% 
+  pull(age_group)
+
+max_n_deaths <- age_sex_count %>% 
+  summarise(max_deaths = max(n)) %>% 
+  pull(max_deaths)
+```
+
+The age group with the most fatal accidents was `r paste0(max_sex_group, "s")` aged `r max_age_group`, with `r max_n_deaths` deaths.
+
+## Analysis of Driver Position 
+
+We further analyzed the position of the driver involved in these accidents for the age-sex group with the most fatal accidents. 
+
+The table below shows the breakdown of accidents by driver position:
+
+```{r}
+# TASK 10: SUMMARIZE DIRVER POSITION DATA 
+# Filter and summarize
+driver_position_subset <- col_accidents_subset %>%
+  filter(gender == "Male", age_group == "20-24") %>%
+  count(position, name = "number_of_deaths") %>%
+  arrange(desc(number_of_deaths))
+
+# Render summary table using reactable
+reactable(driver_position_subset,
+          columns = list(
+            position = colDef(name = "Driving Position"),
+            number_of_deaths = colDef(name = "Number of Deaths")
+          ),
+          bordered = TRUE,
+          striped = TRUE,
+          highlight = TRUE,
+          defaultPageSize = 5,
+          showPageSizeOptions = TRUE)
+```
+# Time Series Analysis of Yearly deaths
+
+In this analysis, we looked at the yearly number of deaths .
+
+```{r}
+# Extract year from the date_of_death column and summarize
+yearly_deaths <- col_accidents_clean2 %>%
+  filter(!is.na(date_of_death)) %>%
+  mutate(year = year(date_of_death)) %>%
+  count(year, name = "number_of_deaths") %>%
+  arrange(year)
+
+# Create the plot
+yearly_death_plot <- ggplot(yearly_deaths, aes(x = factor(year), y = number_of_deaths)) +
+  geom_col(fill = "#20B2AA") +
+  geom_text(aes(label = number_of_deaths), vjust = -0.3, size = 3.5) +
+  labs(
+    title = "Motorcycle Accident Deaths in Colombia by Year",
+    subtitle = "Time series showing total number of deaths each year",
+    caption = "Data source: Motorcycle accident fatalities dataset (2012–2015)",
+    x = "Year",
+    y = "Number of Deaths"
+  ) +
+  theme_minimal()
+
+yearly_death_plot
+```
+
